@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUR Edge Ops - Network Simulation Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --status-up: #22c55e;
+            --status-down: #ef4444;
+            --warning-bg: #451a03;
+            --warning-border: #f59e0b;
+            --warning-text: #fef3c7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .disclaimer-banner {
+            background-color: var(--warning-bg);
+            border: 2px solid var(--warning-border);
+            color: var(--warning-text);
+            padding: 14px 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        header h1 {
+            margin: 0 0 6px 0;
+            font-size: 1.8rem;
+            color: var(--accent-blue);
+        }
+
+        header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        /* Topology Visual Box */
+        .topology-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 10px 0;
+        }
+
+        .node-row {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            align-items: center;
+        }
+
+        .node-badge {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            border: 2px solid transparent;
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .node-host {
+            background-color: #14532d;
+            border-color: #22c55e;
+            color: #dcfce7;
+        }
+
+        .node-router {
+            background-color: #1e3a8a;
+            border-color: #3b82f6;
+            color: #dbeafe;
+        }
+
+        .active-node {
+            box-shadow: 0 0 12px var(--accent-blue);
+        }
+
+        .link-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .link-table th, .link-table td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .link-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .badge-up {
+            color: var(--status-up);
+            font-weight: bold;
+        }
+
+        .badge-down {
+            color: var(--status-down);
+            font-weight: bold;
+        }
+
+        .route-box {
+            background-color: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+            margin-top: 14px;
+        }
+
+        .route-active-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--accent-blue);
+        }
+
+        .route-path {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #f1f5f9;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .btn-fail {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .btn-recover {
+            background-color: #16a34a;
+            color: white;
+        }
+
+        .btn-reset {
+            background-color: #475569;
+            color: white;
+        }
+
+        footer {
+            margin-top: 32px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 14px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Prominent Simulation Disclaimer -->
+        <div class="disclaimer-banner">
+            <span style="font-size: 1.4rem;">⚠️</span>
+            <div>
+                <strong>SIMULATED DATA WARNING:</strong> This dashboard is a software-only simulation model.
+                All topology states, telemetry metrics, and routing paths are computed strictly in-memory.
+                No real network hardware, FRRouting, Mininet, Digital Twin predictions, or AUR AI decisions are running.
+            </div>
+        </div>
+
+        <header>
+            <h1>AUR Edge Ops — Network Simulation Dashboard</h1>
+            <p>Milestone 1: 4 Routers (R1–R4), 2 Hosts (H1, H2), Deterministic Route Selection</p>
+        </header>
+
+        <div class="grid">
+            <!-- Topology Diagram & Controls -->
+            <div class="card">
+                <h2>Simulated Topology & Controls</h2>
+                
+                <div class="topology-diagram">
+                    <div class="node-row">
+                        <div class="node-badge node-host">H1<br><small>10.0.1.10</small></div>
+                        <span>──(L1: cost 1)──</span>
+                        <div class="node-badge node-router">R1<br><small>Edge</small></div>
+                    </div>
+                    <div class="node-row" style="margin: 10px 0;">
+                        <span style="margin-left: 120px;">┌──(L2: cost 10: PRIMARY)──&gt;</span>
+                        <div class="node-badge node-router">R2<br><small>Core</small></div>
+                        <span>──(L3: cost 10)──┐</span>
+                    </div>
+                    <div class="node-row" style="margin: 10px 0;">
+                        <span style="margin-left: 120px;">└──(L4: cost 20: BACKUP)───&gt;</span>
+                        <div class="node-badge node-router">R3<br><small>Core</small></div>
+                        <span>──(L5: cost 20)──┘</span>
+                    </div>
+                    <div class="node-row">
+                        <span style="margin-left: 140px;"></span>
+                        <div class="node-badge node-router">R4<br><small>Edge</small></div>
+                        <span>──(L6: cost 1)──</span>
+                        <div class="node-badge node-host">H2<br><small>10.0.4.10</small></div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; margin-top: 18px; color: var(--text-muted);">Scenario Actions (Simulated)</h3>
+                <div class="btn-group">
+                    <form method="post" action="/action/fail-primary" style="display:inline;">
+                        <button type="submit" class="btn-fail">Simulate Primary Failure (Down L2: R1-R2)</button>
+                    </form>
+                    <form method="post" action="/action/recover" style="display:inline;">
+                        <button type="submit" class="btn-recover">Restore Baseline (Recover All)</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Current Simulated State -->
+            <div class="card">
+                <h2>Current Network State (Simulated)</h2>
+                
+                <div class="route-box">
+                    <div class="route-active-title">
+                        Active Route (H1 → H2): 
+                        <span style="color: {% if state.active_route.route_type == 'PRIMARY' %}#38bdf8{% elif state.active_route.route_type == 'BACKUP' %}#f59e0b{% else %}#ef4444{% endif %};">
+                            {{ state.active_route.route_type }}
+                        </span>
+                    </div>
+                    <div class="route-path">
+                        {% if state.active_route.path %}
+                            {{ " ➔ ".join(state.active_route.path) }}
+                        {% else %}
+                            <span style="color: var(--status-down);">NO ROUTE AVAILABLE (NETWORK UNREACHABLE)</span>
+                        {% endif %}
+                    </div>
+                    <div style="margin-top: 8px; font-size: 0.9rem; color: var(--text-muted);">
+                        Total Calculated Cost: <strong>{{ state.active_route.total_cost }}</strong>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; margin-top: 20px; color: var(--text-muted);">Simulated Link Status Table</h3>
+                <table class="link-table">
+                    <thead>
+                        <tr>
+                            <th>Link ID</th>
+                            <th>Endpoints</th>
+                            <th>Cost</th>
+                            <th>Role</th>
+                            <th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for link in state.links %}
+                        <tr>
+                            <td><strong>{{ link.id }}</strong></td>
+                            <td>{{ link.source }} ↔ {{ link.target }}</td>
+                            <td>{{ link.cost }}</td>
+                            <td>
+                                {% if link.id in ['L2', 'L3'] %}
+                                    <span style="color: #38bdf8;">Primary Path</span>
+                                {% elif link.id in ['L4', 'L5'] %}
+                                    <span style="color: #f59e0b;">Backup Path</span>
+                                {% else %}
+                                    <span>Host Access</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if link.state == 'up' %}
+                                    <span class="badge-up">● UP</span>
+                                {% else %}
+                                    <span class="badge-down">● DOWN</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer>
+            AUR Edge Ops — Milestone 1 (Software-Only Simulation Prototype). All state shown is simulated in memory.
+        </footer>
+    </div>
+</body>
+</html>
+
